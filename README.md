@@ -1,18 +1,82 @@
 # Savannah Web Engine
 
-Savannah is a reusable Rust foundation for building fast, cross-platform web browsers and browser-powered applications on Linux, macOS, and Windows.
+Savannah is a reusable Rust browser foundation with a shared core and compile-gated native adapters.
 
-> Savannah is currently an engine foundation, not a complete browser. HTML/CSS layout, JavaScript execution, GPU rendering, and native windows are intentionally exposed as future integration points.
+> This repository now includes a Safari-inspired browser shell model (tabs, address/search, back/forward/reload, loading state, bookmarks, downloads, private-mode indicator) and an extension core with explicit permissions and isolated storage.
 
-## Features
+## Architecture
 
-- Async, non-blocking navigation and resource loading.
-- Typed configuration and errors.
-- Request timeouts and cancellation.
-- HTTP and HTTPS URL validation.
-- Platform capability reporting for Linux, macOS, and Windows.
-- A small public API suitable for future browser shells.
-- No display server or GUI dependency in the core crate, making CI and headless use straightforward.
+- **Shared Rust core (`src/browser.rs`)**
+  - Browser/tab state model.
+  - Address/search parsing.
+  - Back/forward/reload history behavior.
+  - Bookmarks/download affordances.
+  - Private-mode-aware behavior.
+- **Network engine (`src/engine.rs`, `src/loading.rs`)**
+  - Async HTTP/HTTPS navigation with timeout/cancellation.
+- **Extension core (`src/extensions/*`)**
+  - JSON manifest parsing/validation.
+  - Explicit permission and origin capability checks.
+  - Background/content-script metadata hooks.
+  - Messaging bus.
+  - Isolated storage (`extension_id` + private-mode boundary).
+- **Platform adapters (`src/app/*`)**
+  - Linux GTK4 + WebKitGTK adapter contract.
+  - Windows WinUI 3 + WebView2 adapter contract.
+  - macOS SwiftUI + WKWebView adapter contract.
+  - Unsupported targets fail with actionable error messages.
+
+## Safari-inspired shell capabilities (core model)
+
+- Tab strip state and active-tab selection.
+- Address/search field behavior (URL or search query).
+- Back / Forward / Reload affordances.
+- Loading / Loaded / Failed page state.
+- Favorites/bookmarks affordance (disabled persistence in private mode).
+- Downloads affordance with safe URL scheme validation.
+- Private browsing mode indicator/state.
+
+## Extension model
+
+Manifest fields:
+
+- `id`, `name`, `version`
+- `permissions` (explicit only; no `<all_urls>`)
+- `background.script`
+- `content_scripts[].matches` and `content_scripts[].script`
+
+Supported permission kinds:
+
+- `tabs`
+- `bookmarks`
+- `downloads`
+- `messaging`
+- `storage`
+- `origin` (explicit `http(s)://host/` only)
+
+Sample manifest: `/home/runner/work/savannah/savannah/examples/extensions/minimal_extension.json`
+
+## Native UI strategy and prerequisites
+
+Savannah core compiles headlessly in CI. Native adapters are scaffolded and compile-gated:
+
+- **Linux (GTK4 + WebKitGTK)**
+  - Typical packages: `libgtk-4-dev`, WebKitGTK development package for your distro.
+- **Windows (WinUI 3 + WebView2)**
+  - Windows App SDK, WebView2 Runtime, Rust Windows bindings.
+- **macOS (SwiftUI + WKWebView)**
+  - Xcode command-line tools / Xcode SDK, Swift bridge integration.
+
+Current adapter `launch()` methods return clear "unavailable" errors until each platform crate wires native bindings.
+
+## Security defaults
+
+- Extension permissions are explicit and validated.
+- `<all_urls>` origin permission is rejected.
+- Origin matching is allow-list based.
+- Extensions receive no unrestricted native access API.
+- Storage isolation across extension IDs and private/non-private mode.
+- Browser navigation/download URLs are restricted to `http/https`.
 
 ## Quick start
 
@@ -29,40 +93,11 @@ async fn main() -> Result<(), savannah::Error> {
 }
 ```
 
-Run the example with:
+Run:
 
 ```bash
 cargo run --example headless_navigation -- https://example.com
 ```
-
-## Architecture
-
-- `Engine` owns shared runtime services and the HTTP client.
-- `Navigation` models one cancellable load operation.
-- `platform` modules (`linux`, `macos`, `windows`) report compile-time capabilities and explicit placeholder behavior for native backends.
-- Future crates can implement rendering, DOM, JavaScript, storage, and window backends against these stable boundaries.
-
-The loading path uses `reqwest` with Rustls and HTTP/2, and never performs network I/O on the caller's synchronous thread. Keep parsing and rendering in separate pipeline stages so network completion can be streamed into future consumers.
-
-## Dependency choices
-
-- `tokio`: stable async runtime for non-blocking execution and timeout control.
-- `reqwest` (`rustls-tls`, `http2`): mature HTTP client with cross-platform TLS and protocol support.
-- `url`: robust URL parsing and scheme validation.
-- `tokio-util`: cancellation token support for explicit navigation cancellation.
-- `thiserror`: typed, maintainable error definitions.
-
-These dependencies are conservative and widely used in production Rust projects.
-
-## Supported targets
-
-The core crate is designed to compile on:
-
-- Linux (`x86_64`, `aarch64`)
-- macOS (`x86_64`, `aarch64`)
-- Windows (`x86_64`, `aarch64` where the Rust toolchain supports it)
-
-Native windowing and GPU backends are not included yet. The platform module provides explicit capability reporting and is safe to use in headless applications.
 
 ## Development
 
@@ -72,22 +107,20 @@ cargo clippy --all-targets --all-features -- -D warnings
 cargo test --all-targets --all-features
 ```
 
-Linux/macOS/Windows CI is configured in GitHub Actions and avoids GUI/display requirements.
+CI runs these checks on Ubuntu, macOS, and Windows.
 
 ## Current limitations
 
-- No DOM, CSS, JavaScript runtime, or rendering pipeline yet.
-- No browser storage/cookie/profile system yet.
-- Native window backends are placeholders that intentionally report capability status.
+- Native GTK4/WinUI3/SwiftUI window implementations are scaffolded, not fully wired.
+- Full rendering/DOM/JavaScript engine integration is still future work.
+- Extension execution runtime (actual JS host) is not yet implemented; this release focuses on manifest, permissions, messaging, and storage boundaries in the core.
 
-## Roadmap
+## Future work
 
-1. Streaming response and resource scheduling.
-2. HTML tokenizer, DOM, and CSS parsing crates.
-3. Incremental layout and paint trees.
-4. JavaScript runtime integration behind a feature flag.
-5. GPU compositor and native window backends.
-6. Browser profile, cache, cookies, permissions, and developer tooling.
+1. Implement real platform window/webview bindings behind the existing adapter traits.
+2. Bind browser shell state to native UI controls per platform.
+3. Add extension runtime host for content/background script execution.
+4. Add profile/cookie/cache/download manager persistence.
 
 ## License
 

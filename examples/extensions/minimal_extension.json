@@ -1,0 +1,20 @@
+{
+  "id": "sample.toolbar.badge",
+  "name": "Sample Toolbar Badge",
+  "version": "0.1.0",
+  "permissions": [
+    { "kind": "tabs" },
+    { "kind": "messaging" },
+    { "kind": "storage" },
+    { "kind": "origin", "value": "https://example.com/" }
+  ],
+  "background": {
+    "script": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://example.com/"],
+      "script": "content.js"
+    }
+  ]
+}
