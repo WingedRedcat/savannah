@@ -6,8 +6,16 @@ use savannah::{Engine, EngineConfig, Error, PlatformCapability, PlatformInfo, Wi
 fn reports_a_supported_compile_target() {
     let info = PlatformInfo::current();
     assert!(!info.name.is_empty());
-    assert_eq!(info.backend, WindowBackend::Headless);
     assert_eq!(info.capability, PlatformCapability::Placeholder);
+    if cfg!(target_os = "linux") {
+        assert_eq!(info.backend, WindowBackend::Gtk4WebKitGtk);
+    } else if cfg!(target_os = "macos") {
+        assert_eq!(info.backend, WindowBackend::SwiftUiWkWebView);
+    } else if cfg!(target_os = "windows") {
+        assert_eq!(info.backend, WindowBackend::WinUi3WebView2);
+    } else {
+        assert_eq!(info.backend, WindowBackend::Headless);
+    }
 }
 
 #[test]

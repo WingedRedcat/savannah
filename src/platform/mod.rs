@@ -7,8 +7,12 @@ mod windows;
 pub enum WindowBackend {
     /// No native window backend is linked; suitable for headless use.
     Headless,
-    /// A native backend can be added by a platform integration crate.
-    FutureNative,
+    /// Linux: GTK4 shell with WebKitGTK webview runtime.
+    Gtk4WebKitGtk,
+    /// Windows: WinUI 3 shell with WebView2 runtime.
+    WinUi3WebView2,
+    /// macOS: SwiftUI shell with WKWebView runtime.
+    SwiftUiWkWebView,
 }
 
 /// Capability status for the currently selected platform backend.
