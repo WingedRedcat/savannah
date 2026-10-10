@@ -1,0 +1,26 @@
+[package]
+name = "savannah-engine"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.78"
+description = "Cross-platform foundation for browsers built with the Savannah Web Engine"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/WingedRedcat/savannah"
+
+[lib]
+name = "savannah"
+path = "src/lib.rs"
+
+[dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "http2"] }
+thiserror = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+url = "2"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "test-util", "net", "io-util"] }
+
+[[example]]
+name = "headless_navigation"
+path = "examples/headless_navigation.rs"
